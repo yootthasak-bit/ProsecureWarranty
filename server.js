@@ -49,6 +49,16 @@ function sendFile(res, filePath, contentType) {
   });
 }
 
+function contentTypeFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".css") return "text/css; charset=utf-8";
+  if (ext === ".js") return "application/javascript; charset=utf-8";
+  return "application/octet-stream";
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -76,6 +86,19 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === "/" || url.pathname === "/index.html") {
     sendFile(res, path.join(root, "sn-barcode-system.html"), "text/html; charset=utf-8");
+    return;
+  }
+
+  if (url.pathname.startsWith("/assets/")) {
+    const assetName = decodeURIComponent(url.pathname.slice("/assets/".length));
+    const assetsRoot = path.resolve(root, "assets");
+    const filePath = path.resolve(assetsRoot, assetName);
+    if (!filePath.startsWith(assetsRoot + path.sep)) {
+      res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Forbidden");
+      return;
+    }
+    sendFile(res, filePath, contentTypeFor(filePath));
     return;
   }
 

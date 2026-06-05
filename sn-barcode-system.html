@@ -359,57 +359,127 @@
 
     .label-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(610px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(10cm, 1fr));
       gap: 16px;
+      justify-items: start;
     }
 
     .barcode-label {
       background: #fff;
       border: 1px solid #1b2733;
-      border-radius: 8px;
-      padding: 18px 22px 12px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 224px;
-      grid-template-rows: auto auto;
-      column-gap: 26px;
-      row-gap: 8px;
-      break-inside: avoid;
-      min-height: 300px;
+      border-radius: 4px;
+      padding: 0.20cm 0.25cm 0.20cm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 10cm;
+      height: 5cm;
       box-shadow: 0 10px 28px rgba(31, 48, 69, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .label-layout-grid {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      justify-content: space-between;
+      align-items: stretch;
+    }
+    .label-left-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 7.00cm;
+      height: 100%;
+      padding-top: 0.16cm;
+      padding-bottom: 0.04cm;
+    }
+    .label-right-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 2.20cm;
+      height: 100%;
+    }
+    .left-code {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .right-code {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .warranty-text {
+      font-size: 6.5pt;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 0.05cm;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .barcode-label:not(.is-selected) {
+      opacity: 0.48;
+    }
+
+    .label-select {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      color: #263747;
+      font-size: 12px;
+      font-weight: 800;
+      z-index: 2;
+    }
+
+    .label-select input {
+      width: 16px;
+      min-height: 16px;
+      height: 16px;
+      padding: 0;
     }
 
     .label-info {
       display: grid;
-      gap: 6px;
+      gap: 0.08cm;
       align-content: start;
     }
 
     .label-brand {
-      width: 330px;
-      max-width: 100%;
-      height: 78px;
-      display: block;
-      color: rgba(23, 32, 42, 0.38);
+      display: none;
     }
 
     .label-title {
       font-weight: 900;
       color: #222f3d;
-      font-size: 16px;
-      line-height: 1.15;
+      font-size: 11pt;
+      line-height: 1.05;
+      white-space: nowrap;
     }
 
     .spec-list {
       display: grid;
-      gap: 2px;
-      font-size: 15px;
-      line-height: 1.2;
+      gap: 0;
+      font-size: 7.10pt;
+      line-height: 1.06;
     }
 
     .spec-row {
       display: grid;
-      grid-template-columns: 90px minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: 1.30cm minmax(0, 1fr);
+      gap: 0.09cm;
+      min-width: 0;
     }
 
     .spec-row span {
@@ -417,18 +487,24 @@
       font-weight: 800;
     }
 
+    .spec-row div {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
     .code-column {
       display: grid;
       justify-items: center;
       align-content: start;
-      gap: 3px;
+      gap: 0.02cm;
     }
 
     .qr-box {
-      width: 214px;
-      height: 214px;
+      width: 2.20cm;
+      height: 2.20cm;
       border: 1px solid #111;
-      padding: 4px;
+      padding: 0.04cm;
       background: #fff;
     }
 
@@ -446,21 +522,21 @@
 
     .barcode-label .sn {
       font-weight: 900;
-      font-size: 21px;
+      font-size: 10pt;
       line-height: 1;
       letter-spacing: 1px;
       overflow-wrap: anywhere;
       text-align: center;
       grid-column: 1 / -1;
-      margin-top: -2px;
+      margin-top: -0.02cm;
     }
 
-    .barcode-label svg {
-      width: 84%;
-      height: 42px;
+    .barcode-label .sn-barcode {
+      width: 7.00cm;
+      height: 0.42cm;
       grid-column: 1 / -1;
       justify-self: center;
-      margin-top: 6px;
+      margin-top: 0.02cm;
     }
 
     .barcode-label small {
@@ -633,11 +709,20 @@
     }
 
     @media print {
+      @page {
+        size: 10cm 5cm;
+        margin: 0;
+      }
+
       body {
         background: #fff;
       }
 
       aside, .topbar, .stats, .grid, .panel:not(.print-panel), .toolbar, .no-print, .toast {
+        display: none !important;
+      }
+
+      .label-select {
         display: none !important;
       }
 
@@ -656,13 +741,24 @@
       }
 
       .label-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10mm;
+        display: block;
       }
 
       .barcode-label {
         border: 1px solid #222;
+        border-radius: 0;
+        box-shadow: none;
+        opacity: 1;
+        width: 10cm;
+        height: 5cm;
+        page-break-after: always;
         page-break-inside: avoid;
+        break-after: page;
+        break-inside: avoid;
+      }
+
+      .barcode-label:not(.is-selected) {
+        display: none !important;
       }
     }
   </style>
@@ -723,7 +819,8 @@
       products: loadProducts(),
       models: loadModels(),
       activeView: "dashboard",
-      lastGenerated: []
+      lastGenerated: [],
+      selectedLabels: new Set()
     };
 
     const titles = {
@@ -1150,13 +1247,22 @@
                   <input id="installDate" name="installDate" type="date" value="${today()}" required />
                 </div>
                 <div class="field">
-                  <label for="installLocation">ติดตั้งที่ไหน</label>
+                  <label for="installLocation">สถานที่ติดตั้ง</label>
                   <input id="installLocation" name="installLocation" required />
                 </div>
                 <div class="field full">
-                  <label for="note">หมายเหตุ</label>
-                  <textarea id="note" name="note"></textarea>
-                </div>
+  <label for="note">หมายเหตุ</label>
+  <textarea id="note" name="note"></textarea>
+</div>
+<div class="field">
+  <label for="customerType">ประเภทลูกค้า</label>
+  <select id="customerType" name="customerType" required>
+    <option value="Project">Project</option>
+    <option value="End User">End User</option>
+    <option value="Dealer">Dealer</option>
+    <option value="Multi branch">Multi branch</option>
+  </select>
+</div>
               </div>
               <div class="actions">
                 <button type="submit">บันทึกติดตั้ง</button>
@@ -1185,6 +1291,7 @@
       product.status = "installed";
       product.customerName = form.elements.customerName.value.trim();
       product.companyName = form.elements.companyName.value.trim();
+      product.customerType = form.elements.customerType.value;
       product.installLocation = form.elements.installLocation.value.trim();
       product.installDate = installDate;
       product.warrantyStart = installDate;
@@ -1203,8 +1310,9 @@
           <div class="panel-header">
             <h3>ฉลาก Barcode</h3>
             <div class="actions">
+              <button class="secondary" id="selectVisibleBtn" ${products.length ? "" : "disabled"}>เลือกทั้งหมดที่แสดง</button>
               <button class="secondary" id="selectLatestBtn" ${generated.size ? "" : "disabled"}>เลือกชุดล่าสุด</button>
-              <button class="warning" id="printBtn" ${products.length ? "" : "disabled"}>พิมพ์ฉลาก</button>
+              <button class="warning" id="printBtn" ${products.length ? "" : "disabled"}>พิมพ์ฉลากที่เลือก</button>
             </div>
           </div>
           <div class="panel-body">
@@ -1218,57 +1326,92 @@
       `;
 
       const search = document.getElementById("labelSearch");
+      let visibleProducts = products;
       const render = () => {
         const q = search.value.trim().toLowerCase();
-        const filtered = products.filter((p) => {
+        visibleProducts = products.filter((p) => {
           const spec = productSpec(p);
           const text = `${p.sn} ${spec.model} ${spec.material} ${spec.size} ${spec.voltage}`.toLowerCase();
           return text.includes(q);
         });
-        document.getElementById("labelCount").textContent = `แสดง ${filtered.length} รายการ`;
-        document.getElementById("labelGrid").innerHTML = filtered.length ? filtered.map(labelCard).join("") : `<div class="empty">ยังไม่มี SN สำหรับพิมพ์</div>`;
+        drawLabels(visibleProducts, `แสดง ${visibleProducts.length} รายการ`);
       };
       search.addEventListener("input", render);
+      document.getElementById("selectVisibleBtn").addEventListener("click", () => {
+        visibleProducts.forEach((product) => state.selectedLabels.add(product.sn));
+        drawLabels(visibleProducts, `เลือกแล้ว ${visibleProducts.length} รายการ`);
+      });
       document.getElementById("selectLatestBtn").addEventListener("click", () => {
         search.value = "";
-        document.getElementById("labelGrid").innerHTML = products.filter((p) => generated.has(p.sn)).map(labelCard).join("");
-        document.getElementById("labelCount").textContent = `แสดงชุดล่าสุด ${generated.size} รายการ`;
+        visibleProducts = products.filter((p) => generated.has(p.sn));
+        visibleProducts.forEach((product) => state.selectedLabels.add(product.sn));
+        drawLabels(visibleProducts, `แสดงชุดล่าสุด ${generated.size} รายการ`);
       });
-      document.getElementById("printBtn").addEventListener("click", () => window.print());
+      document.getElementById("printBtn").addEventListener("click", () => {
+        if (!state.selectedLabels.size) {
+          showToast("กรุณาเลือกฉลากอย่างน้อย 1 รายการก่อนพิมพ์");
+          return;
+        }
+        window.print();
+      });
       render();
     }
 
     function labelCard(product) {
       const url = customerPortalUrl();
       const spec = productSpec(product);
+      const selected = state.selectedLabels.has(product.sn);
       return `
-        <article class="barcode-label">
-          <div class="label-info">
-            <svg class="label-brand" viewBox="0 0 360 86" aria-label="PROsecure logo">
-              <text x="0" y="58" fill="currentColor" font-family="Arial Black, Impact, sans-serif" font-size="68" font-style="italic" font-weight="900" letter-spacing="-7">PRO</text>
-              <text x="132" y="58" fill="currentColor" font-family="Arial Black, Impact, sans-serif" font-size="47" font-style="italic" font-weight="900" letter-spacing="-4">sec</text>
-              <path d="M221 20 L265 0 L312 20 L292 20 L265 9 L238 20 Z" fill="currentColor"/>
-              <text x="240" y="58" fill="currentColor" font-family="Arial Black, Impact, sans-serif" font-size="47" font-style="italic" font-weight="900" letter-spacing="-4">ure</text>
-            </svg>
-            <div class="label-title">Electronic Article Surveillance (EAS)</div>
-            <div class="spec-list">
-              <div class="spec-row"><span>Model:</span><div>${escapeHtml(spec.model)}</div></div>
-              <div class="spec-row"><span>Material:</span><div>${escapeHtml(spec.material)}</div></div>
-              <div class="spec-row"><span>Size:</span><div>${escapeHtml(spec.size)}</div></div>
-              <div class="spec-row"><span>Voltage:</span><div>${escapeHtml(spec.voltage)}</div></div>
-              <div class="spec-row"><span>Sold by:</span><div>Prosecure Co., Ltd (Head Office)</div></div>
-              <div class="spec-row"><span>Mobile:</span><div>083-099-2437</div></div>
-              <div class="spec-row"><span>Line ID:</span><div>@prosecureshop</div></div>
+        <article class="barcode-label ${selected ? "is-selected" : ""}" data-label-sn="${product.sn}">
+          <label class="label-select no-print">
+            <input type="checkbox" data-label-check="${product.sn}" ${selected ? "checked" : ""} />
+            เลือก
+          </label>
+          <div class="label-layout-grid">
+            <div class="label-left-col">
+              <div class="label-info">
+                <div class="label-title">Electronic Article Surveillance (EAS)</div>
+                <div class="spec-list">
+                  <div class="spec-row"><span>Model:</span><div>${escapeHtml(spec.model)}</div></div>
+                  <div class="spec-row"><span>Material:</span><div>${escapeHtml(spec.material)}</div></div>
+                  <div class="spec-row"><span>Size:</span><div>${escapeHtml(spec.size)}</div></div>
+                  <div class="spec-row"><span>Voltage:</span><div>${escapeHtml(spec.voltage)}</div></div>
+                  <div class="spec-row"><span>Sold by:</span><div>Prosecure Co., Ltd (Head Office)</div></div>
+                  <div class="spec-row"><span>Mobile:</span><div>083-099-2437</div></div>
+                  <div class="spec-row"><span>Line ID:</span><div>@prosecureshop</div></div>
+                </div>
+              </div>
+              <div class="left-code">
+                ${barcodeSvg(product.sn)}
+                <div class="sn">${product.sn}</div>
+              </div>
+            </div>
+            <div class="label-right-col">
+              <div class="right-code">
+                <div class="qr-box"><img alt="QR warranty" src="${qrImageUrl(url)}" /></div>
+                <small class="warranty-text">Warranty</small>
+              </div>
             </div>
           </div>
-          <div class="code-column">
-            <div class="qr-box"><img alt="QR warranty" src="${qrImageUrl(url)}" /></div>
-            <small>Warranty</small>
-          </div>
-          ${barcodeSvg(product.sn)}
-          <div class="sn">${product.sn}</div>
         </article>
       `;
+    }
+
+    function drawLabels(products, countText) {
+      document.getElementById("labelCount").textContent = `${countText} | เลือกแล้ว ${state.selectedLabels.size} รายการ`;
+      document.getElementById("labelGrid").innerHTML = products.length ? products.map(labelCard).join("") : `<div class="empty">ยังไม่มี SN สำหรับพิมพ์</div>`;
+      document.querySelectorAll("[data-label-check]").forEach((input) => {
+        input.addEventListener("change", () => {
+          if (input.checked) {
+            state.selectedLabels.add(input.dataset.labelCheck);
+          } else {
+            state.selectedLabels.delete(input.dataset.labelCheck);
+          }
+          const card = input.closest(".barcode-label");
+          if (card) card.classList.toggle("is-selected", input.checked);
+          document.getElementById("labelCount").textContent = `${countText} | เลือกแล้ว ${state.selectedLabels.size} รายการ`;
+        });
+      });
     }
 
     function renderCustomer() {
@@ -1324,7 +1467,8 @@
           <div class="info-box"><span>สถานะ</span><strong>${product.status === "installed" ? "ติดตั้งแล้ว" : "อยู่ในสต็อก"}</strong></div>
           <div class="info-box"><span>บริษัท</span><strong>${escapeHtml(product.companyName || "-")}</strong></div>
           <div class="info-box"><span>ชื่อลูกค้า</span><strong>${escapeHtml(product.customerName || "-")}</strong></div>
-          <div class="info-box"><span>ติดตั้งที่ไหน</span><strong>${escapeHtml(product.installLocation || "-")}</strong></div>
+          <div class="info-box"><span>สถานที่ติดตั้ง</span><strong>${escapeHtml(product.installLocation || "-")}</strong></div>
+          <div class="info-box"><span>ประเภทลูกค้า</span><strong>${escapeHtml(product.customerType || "-")}</strong></div>
           <div class="info-box"><span>วันที่ติดตั้ง</span><strong>${formatDate(product.installDate)}</strong></div>
           <div class="info-box"><span>วันหมดประกัน</span><strong>${formatDate(product.warrantyEnd)}</strong></div>
           <div class="info-box"><span>ประกัน 1 ปี</span><strong><span class="status ${warranty.className}">${warranty.label}</span></strong></div>
@@ -1343,7 +1487,7 @@
           </div>
           <div class="panel-body">
             <div class="toolbar">
-              <input class="search" id="dataSearch" placeholder="ค้นหา SN, สินค้า, ลูกค้า, บริษัท หรือสถานที่ติดตั้ง" />
+              <input class="search" id="dataSearch" placeholder="ค้นหา SN, สินค้า, ลูกค้า, บริษัท, ประเภทลูกค้า หรือสถานที่ติดตั้ง" />
               <span class="hint" id="dataCount"></span>
             </div>
             <div class="table-wrap" id="dataTable"></div>
@@ -1355,12 +1499,13 @@
       const render = () => {
         const q = search.value.trim().toLowerCase();
         const filtered = state.products.filter((p) => {
-          const text = [p.sn, p.productName, p.customerName, p.companyName, p.installLocation, p.status].join(" ").toLowerCase();
+          const text = [p.sn, p.productName, p.customerName, p.companyName, p.customerType, p.installLocation, p.status].join(" ").toLowerCase();
           return text.includes(q);
         });
         document.getElementById("dataCount").textContent = `พบ ${filtered.length} รายการ`;
         document.getElementById("dataTable").innerHTML = productTable(filtered, true);
         document.querySelectorAll("[data-edit-sn]").forEach((btn) => btn.addEventListener("click", () => editProduct(btn.dataset.editSn)));
+        document.querySelectorAll("[data-delete-sn]").forEach((btn) => btn.addEventListener("click", () => deleteProduct(btn.dataset.deleteSn)));
       };
       search.addEventListener("input", render);
       document.getElementById("clearBtn").addEventListener("click", () => {
@@ -1368,6 +1513,7 @@
         state.products = [];
         state.lastGenerated = [];
         saveProducts();
+        state.selectedLabels.clear();
         renderAll();
         showToast("ล้างข้อมูลแล้ว");
       });
@@ -1384,7 +1530,8 @@
               <th>สินค้า</th>
               <th>สถานะ</th>
               <th>ลูกค้า / บริษัท</th>
-              <th>ติดตั้งที่ไหน</th>
+              <th>ประเภทลูกค้า</th>
+              <th>สถานที่ติดตั้ง</th>
               <th>วันที่ติดตั้ง</th>
               <th>หมดประกัน</th>
               ${editable ? "<th>จัดการ</th>" : ""}
@@ -1399,10 +1546,11 @@
                   <td>${escapeHtml(p.productName)}</td>
                   <td><span class="status ${p.status === "installed" ? "installed" : "stock"}">${p.status === "installed" ? "ติดตั้งแล้ว" : "ในสต็อก"}</span></td>
                   <td>${escapeHtml(p.customerName || "-")}<br><span class="hint">${escapeHtml(p.companyName || "")}</span></td>
+                  <td><span class="status ${p.customerType ? 'valid' : 'stock'}">${escapeHtml(p.customerType || "-")}</span></td>
                   <td>${escapeHtml(p.installLocation || "-")}</td>
                   <td>${formatDate(p.installDate)}</td>
                   <td>${formatDate(p.warrantyEnd)}<br><span class="status ${warranty.className}">${warranty.label}</span></td>
-                  ${editable ? `<td><button class="secondary" data-edit-sn="${p.sn}">แก้ไข</button></td>` : ""}
+                  ${editable ? `<td><div class="actions"><button class="secondary" data-edit-sn="${p.sn}">แก้ไข</button><button class="warning" data-delete-sn="${p.sn}">ลบ</button></div></td>` : ""}
                 </tr>
               `;
             }).join("")}
@@ -1418,13 +1566,16 @@
       if (customerName === null) return;
       const companyName = prompt("ชื่อบริษัท", product.companyName || "");
       if (companyName === null) return;
-      const installLocation = prompt("ติดตั้งที่ไหน", product.installLocation || "");
+      const customerType = prompt("ประเภทลูกค้า (Project, End User, Dealer, Multi branch)", product.customerType || "");
+      if (customerType === null) return;
+      const installLocation = prompt("สถานที่ติดตั้ง", product.installLocation || "");
       if (installLocation === null) return;
       const installDate = prompt("วันที่ติดตั้ง (YYYY-MM-DD)", product.installDate || today());
       if (installDate === null) return;
 
       product.customerName = customerName.trim();
       product.companyName = companyName.trim();
+      product.customerType = customerType.trim();
       product.installLocation = installLocation.trim();
       product.installDate = installDate.trim();
       product.status = installDate.trim() ? "installed" : "stock";
@@ -1433,6 +1584,18 @@
       saveProducts();
       renderAll();
       showToast(`แก้ไข ${sn} แล้ว`);
+    }
+
+    function deleteProduct(sn) {
+      const product = state.products.find((p) => p.sn === sn);
+      if (!product) return;
+      if (!confirm(`ต้องการลบ SN ${sn} ใช่ไหม?\n\nการลบนี้ไม่สามารถย้อนกลับได้`)) return;
+      state.products = state.products.filter((p) => p.sn !== sn);
+      state.lastGenerated = state.lastGenerated.filter((item) => item !== sn);
+      state.selectedLabels.delete(sn);
+      saveProducts();
+      renderAll();
+      showToast(`ลบ SN ${sn} แล้ว`);
     }
 
     function nextSn(productName, year, month, lot) {
@@ -1529,7 +1692,7 @@
         }
         x += width;
       });
-      return `<svg viewBox="0 0 ${(x * module).toFixed(2)} ${height}" role="img" aria-label="barcode"><rect width="100%" height="100%" fill="#fff" />${rects.join("")}</svg>`;
+      return `<svg class="sn-barcode" viewBox="0 0 ${(x * module).toFixed(2)} ${height}" role="img" aria-label="barcode"><rect width="100%" height="100%" fill="#fff" />${rects.join("")}</svg>`;
     }
 
     function code128B(text) {
