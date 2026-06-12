@@ -816,11 +816,12 @@
     const WARRANTY_MONTHS = 12;
 
     const state = {
-      products: loadProducts(),
-      models: loadModels(),
+      products: [],
+      models: [],
       activeView: "dashboard",
       lastGenerated: [],
-      selectedLabels: new Set()
+      selectedLabels: new Set(),
+      lastUpdated: Number(localStorage.getItem("snBarcodeLastUpdated")) || 0
     };
 
     const titles = {
@@ -856,7 +857,12 @@
     init();
 
     async function init() {
+      // First populate state from local storage before syncing
+      state.products = loadProducts();
+      state.models = loadModels();
+      
       await syncFromServer();
+      
       const params = new URLSearchParams(location.search);
       if (params.get("sn") || params.get("customer") === "1") {
         state.activeView = "customer";
@@ -878,11 +884,33 @@
         const response = await fetch("/api/data", { cache: "no-store" });
         if (!response.ok) throw new Error("Cannot load server data");
         const data = await response.json();
-        state.products = Array.isArray(data.products) ? data.products : [];
-        state.models = Array.isArray(data.models) ? data.models : [];
+        
+        const localLastUpdated = Number(localStorage.getItem("snBarcodeLastUpdated")) || 0;
+        const serverLastUpdated = Number(data.lastUpdated) || 0;
+        
+        if (serverLastUpdated > localLastUpdated) {
+          // Server data is newer
+          state.products = Array.isArray(data.products) ? data.products : [];
+          state.models = Array.isArray(data.models) ? data.models : [];
+          state.lastUpdated = serverLastUpdated;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.products));
+          localStorage.setItem(MODEL_STORAGE_KEY, JSON.stringify(state.models));
+          localStorage.setItem("snBarcodeLastUpdated", state.lastUpdated);
+        } else if (localLastUpdated > serverLastUpdated) {
+          // Local data is newer, upload to server
+          state.lastUpdated = localLastUpdated;
+          await saveServerData();
+        } else {
+          // Equal, just make sure state matches load
+          state.products = loadProducts();
+          state.models = loadModels();
+          state.lastUpdated = localLastUpdated;
+        }
       } catch (error) {
         console.warn(error);
         showToast("เชื่อมต่อข้อมูลกลางไม่ได้ ระบบจะแสดงข้อมูลในเครื่องนี้");
+        state.products = loadProducts();
+        state.models = loadModels();
       }
     }
 
@@ -903,11 +931,15 @@
     }
 
     function saveProducts() {
+      state.lastUpdated = Date.now();
+      localStorage.setItem("snBarcodeLastUpdated", state.lastUpdated);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.products));
       saveServerData();
     }
 
     function saveModels() {
+      state.lastUpdated = Date.now();
+      localStorage.setItem("snBarcodeLastUpdated", state.lastUpdated);
       localStorage.setItem(MODEL_STORAGE_KEY, JSON.stringify(state.models));
       saveServerData();
     }
@@ -918,7 +950,11 @@
         await fetch("/api/data", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ products: state.products, models: state.models })
+          body: JSON.stringify({ 
+            products: state.products, 
+            models: state.models, 
+            lastUpdated: state.lastUpdated 
+          })
         });
       } catch (error) {
         console.warn(error);
@@ -1024,69 +1060,65 @@
             <div class="panel-header"><h3>รุ่นสินค้าที่บันทึกไว้</h3></div>
             <div class="panel-body">
               <div class="model-list">
-                ${state.models.length ? state.models.map(modelCard).join("") : `<div class="empty">ยังไม่มีข้อมูลรุ่นสินค้า</div>`}
+                ${state.models.length ? state.models.map(m => `
+                  <div class="model-item">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <strong>${escapeHtml(m.model)}</strong>
+                      <button class="secondary ghost" onclick="deleteModel('${m.id}')" style="min-height:30px; padding:5px 10px;">ลบ</button>
+                    </div>
+                    <small>Material: ${escapeHtml(m.material)}</small>
+                    <small>Size: ${escapeHtml(m.size)}</small>
+                    <small>Voltage: ${escapeHtml(m.voltage)}</small>
+                  </div>
+                `).join("") : '<div class="empty">ยังไม่มีรุ่นสินค้า</div>'}
               </div>
             </div>
           </div>
         </div>
       `;
-      document.getElementById("modelForm").addEventListener("submit", addModel);
-      document.querySelectorAll("[data-delete-model]").forEach((btn) => {
-        btn.addEventListener("click", () => deleteModel(btn.dataset.deleteModel));
-      });
+      document.getElementById("modelForm").addEventListener("submit", createModel);
     }
 
-    function modelCard(model) {
-      return `
-        <article class="model-item">
-          <div class="toolbar">
-            <strong>${escapeHtml(model.model)}</strong>
-            <button class="secondary" data-delete-model="${model.id}">ลบ</button>
-          </div>
-          <div class="spec-list">
-            <div class="spec-row"><span>Material:</span><div>${escapeHtml(model.material)}</div></div>
-            <div class="spec-row"><span>Size:</span><div>${escapeHtml(model.size)}</div></div>
-            <div class="spec-row"><span>Voltage:</span><div>${escapeHtml(model.voltage)}</div></div>
-          </div>
-        </article>
-      `;
-    }
-
-    function addModel(event) {
+    function createModel(event) {
       event.preventDefault();
       const form = event.currentTarget;
-      const model = form.elements.model.value.trim();
-      if (!serialPrefix(model)) {
-        showToast("กรุณากรอก Model เป็นตัวอักษรอังกฤษหรือตัวเลข");
+      const model = form.elements.model.value.trim().toUpperCase();
+      const material = form.elements.material.value.trim();
+      const size = form.elements.size.value.trim();
+      const voltage = form.elements.voltage.value.trim();
+
+      if (!model) {
+        showToast("กรุณากรอก Model");
         return;
       }
-      if (state.models.some((item) => item.model.toLowerCase() === model.toLowerCase())) {
-        showToast("Model นี้มีอยู่แล้ว");
+
+      if (state.models.some((m) => m.model === model)) {
+        showToast("มีรุ่นสินค้านี้อยู่แล้ว");
         return;
       }
+
       state.models.push({
         id: `model-${Date.now()}`,
         model,
-        material: form.elements.material.value.trim(),
-        size: form.elements.size.value.trim(),
-        voltage: form.elements.voltage.value.trim(),
+        material,
+        size,
+        voltage,
         createdAt: new Date().toISOString()
       });
+
       saveModels();
       renderAll();
-      showToast("เพิ่มข้อมูลสินค้าแล้ว");
+      showToast(`เพิ่มรุ่นสินค้า ${model} สำเร็จ`);
     }
 
     function deleteModel(id) {
-      const used = state.products.some((product) => product.modelId === id);
-      if (used) {
-        showToast("ลบไม่ได้ เพราะมี SN ที่ใช้รุ่นนี้อยู่");
-        return;
-      }
-      state.models = state.models.filter((model) => model.id !== id);
+      const model = state.models.find((m) => m.id === id);
+      if (!model) return;
+      if (!confirm(`ต้องการลบรุ่นสินค้า ${model.model} ใช่ไหม?\n(หมายเหตุ: เลข SN ที่สร้างไปแล้วของรุ่นนี้จะไม่ถูกลบ)`)) return;
+      state.models = state.models.filter((m) => m.id !== id);
       saveModels();
       renderAll();
-      showToast("ลบรุ่นสินค้าแล้ว");
+      showToast(`ลบรุ่นสินค้า ${model.model} แล้ว`);
     }
 
     function renderGenerate() {
@@ -1094,6 +1126,7 @@
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, "0");
       const firstModel = state.models[0];
+      
       document.getElementById("view-generate").innerHTML = `
         <div class="grid">
           <div class="panel">
@@ -1133,7 +1166,18 @@
               </div>
               <p class="hint">${state.models.length ? "เลขลำดับ 3 หลักจะเริ่มจากเลขถัดไปของปี/เดือน/Lot เดียวกัน เช่น 001, 002, 003" : "กรุณาเพิ่มรุ่นสินค้าในหน้า ข้อมูลสินค้า ก่อนสร้าง SN"}</p>
             </form>
+            
+            <form class="panel-body" id="manualSnForm" style="border-top: 1px solid var(--line);">
+              <div class="field full">
+                <label for="manualSn">พิมพ์เลข SN ที่ต้องการสร้างโดยตรง (Manual)</label>
+                <input id="manualSn" name="manualSn" placeholder="เช่น BH9686M2026051004" required />
+              </div>
+              <div class="actions" style="margin-top: 10px;">
+                <button type="submit">สร้าง SN (Manual)</button>
+              </div>
+            </form>
           </div>
+          
           <div class="panel">
             <div class="panel-header">
               <h3>SN ที่สร้างล่าสุด</h3>
@@ -1153,7 +1197,59 @@
         });
       });
       form.addEventListener("submit", createSerials);
+
+      const manualForm = document.getElementById("manualSnForm");
+      manualForm.addEventListener("submit", createManualSn);
+
       document.getElementById("goLabelsBtn").addEventListener("click", () => setView("labels"));
+    }
+
+    function createManualSn(event) {
+      event.preventDefault();
+      const snInput = document.getElementById("manualSn").value.trim().toUpperCase();
+      if (!snInput) { showToast("กรุณากรอก SN"); return; }
+      if (state.products.some(p => p.sn === snInput)) { showToast("SN นี้มีอยู่แล้ว"); return; }
+      
+      const match = snInput.match(/^([A-Z0-9]+?)(\d{10})$/);
+      if (!match) { showToast("รูปแบบ SN ไม่ถูกต้อง (รหัสรุ่น + ตัวเลข 10 หลัก)"); return; }
+      
+      const prefix = match[1];
+      const core = match[2];
+      const year = core.slice(0, 4);
+      const month = core.slice(4, 6);
+      const lot = core.slice(6, 7);
+      const sequence = Number(core.slice(7));
+      
+      const model = state.models.find(m => serialPrefix(m.model) === prefix);
+      if (!model) { showToast(`ไม่พบรุ่นสินค้าที่มี Prefix ตรงกับ "${prefix}" ในระบบ`); return; }
+      
+      state.products.push({
+        sn: snInput,
+        year,
+        month,
+        lot,
+        sequence,
+        serialCore: core,
+        productPrefix: prefix,
+        modelId: model.id,
+        productName: model.model,
+        material: model.material,
+        size: model.size,
+        voltage: model.voltage,
+        status: "stock",
+        customerName: "",
+        companyName: "",
+        installLocation: "",
+        installDate: "",
+        warrantyStart: "",
+        warrantyEnd: "",
+        note: "",
+        createdAt: new Date().toISOString()
+      });
+      
+      saveProducts();
+      renderAll();
+      showToast(`สร้าง SN ${snInput} สำเร็จ`);
     }
 
     function createSerials(event) {

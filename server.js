@@ -11,17 +11,19 @@ function readData() {
     const data = JSON.parse(fs.readFileSync(dataFile, "utf8"));
     return {
       products: Array.isArray(data.products) ? data.products : [],
-      models: Array.isArray(data.models) ? data.models : []
+      models: Array.isArray(data.models) ? data.models : [],
+      lastUpdated: data.lastUpdated || 0
     };
   } catch {
-    return { products: [], models: [] };
+    return { products: [], models: [], lastUpdated: 0 };
   }
 }
 
 function writeData(data) {
   const clean = {
     products: Array.isArray(data.products) ? data.products : [],
-    models: Array.isArray(data.models) ? data.models : []
+    models: Array.isArray(data.models) ? data.models : [],
+    lastUpdated: data.lastUpdated || 0
   };
   fs.writeFileSync(dataFile, JSON.stringify(clean, null, 2), "utf8");
 }
