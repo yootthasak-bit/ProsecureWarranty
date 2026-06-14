@@ -183,7 +183,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/admin") {
+  if (url.pathname === "/admin") {
+    res.writeHead(302, { Location: "/" });
+    res.end();
+    return;
+  }
+
+  if (url.pathname === "/" || url.pathname === "/index.html") {
     sendFile(res, path.join(root, "sn-barcode-system.html"), "text/html; charset=utf-8");
     return;
   }

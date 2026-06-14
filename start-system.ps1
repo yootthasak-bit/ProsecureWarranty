@@ -9,8 +9,8 @@ if (-not (Test-Path -LiteralPath $node)) {
 Write-Host "Starting SN Warranty System..." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Please keep this window open while testing." -ForegroundColor Yellow
-Write-Host "Admin page:    http://localhost:3000/admin"
-Write-Host "Customer page: http://localhost:3000"
+Write-Host "Staff login:   http://localhost:3000"
+Write-Host "Customer QR:   http://localhost:3000/?sn=YOUR_SN"
 Write-Host ""
 
 Start-Job -Name "sn-warranty-server" -ScriptBlock {
@@ -22,7 +22,7 @@ Start-Job -Name "sn-warranty-server" -ScriptBlock {
 for ($i = 0; $i -lt 20; $i++) {
   try {
     Invoke-WebRequest -Uri "http://localhost:3000/" -UseBasicParsing -TimeoutSec 1 | Out-Null
-    Start-Process "http://localhost:3000/admin"
+    Start-Process "http://localhost:3000"
     Write-Host "System is ready. Browser opened." -ForegroundColor Green
     Write-Host "Press Enter to stop the system."
     Read-Host | Out-Null

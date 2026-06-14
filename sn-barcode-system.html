@@ -869,17 +869,19 @@
     window.addEventListener("popstate", () => {
       const params = new URLSearchParams(location.search);
       const sn = params.get("sn");
-      if (!isAdminPath() || sn || params.get("customer") === "1") setView("customer");
+      if (sn && !isAdminPath()) setView("customer");
+      if (!sn) init();
     });
 
     init();
 
     async function init() {
       const params = new URLSearchParams(location.search);
-      if (!isAdminPath()) {
+      const customerSn = params.get("sn") || "";
+      if (customerSn && !isAdminPath()) {
         state.activeView = "customer";
         document.body.classList.add("customer-public");
-        await loadCustomerProduct(params.get("sn") || "");
+        await loadCustomerProduct(customerSn);
         renderAll();
         setView("customer", false);
         return;
@@ -898,18 +900,15 @@
       
       await syncFromServer();
       
-      if (params.get("sn") || params.get("customer") === "1") {
-        state.activeView = "customer";
-        document.body.classList.add("customer-public");
-      } else {
-        document.body.classList.remove("customer-public");
-      }
+      state.activeView = "dashboard";
+      document.body.classList.remove("customer-public");
       renderAll();
       setView(state.activeView, false);
     }
 
     function isAdminPath() {
-      return location.pathname.replace(/\/+$/, "") === "/admin";
+      const path = location.pathname.replace(/\/+$/, "") || "/";
+      return path === "/admin";
     }
 
     async function checkAdminSession() {
@@ -942,9 +941,8 @@
             </div>
             <div class="actions">
               <button type="submit">เข้าสู่ระบบ</button>
-              <a class="secondary" href="/">ไปหน้าลูกค้า</a>
             </div>
-            <span class="hint">รหัสเริ่มต้นคือ 1234 และควรเปลี่ยนเป็นรหัสจริงก่อนใช้งานออนไลน์</span>
+            <span class="hint">พนักงานพิมพ์ชื่อเว็บแล้วใส่รหัสที่หน้านี้ ส่วนลูกค้าต้องสแกน QR Code จากฉลากสินค้า</span>
           </form>
         </div>
       `;
@@ -961,7 +959,7 @@
             showToast("รหัสแอดมินไม่ถูกต้อง");
             return;
           }
-          location.href = "/admin";
+          location.href = "/";
         } catch {
           showToast("เข้าสู่ระบบไม่ได้ กรุณาตรวจสอบเซิร์ฟเวอร์");
         }
@@ -1624,7 +1622,7 @@
     function renderCustomer() {
       const params = new URLSearchParams(location.search);
       const currentSn = params.get("sn") || "";
-      const publicMode = !isAdminPath() || document.body.classList.contains("customer-public");
+      const publicMode = document.body.classList.contains("customer-public");
       const product = publicMode ? state.customerLookup : state.products.find((p) => p.sn === currentSn);
       document.getElementById("view-customer").innerHTML = `
         <div class="panel customer-card">
