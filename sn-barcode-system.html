@@ -357,6 +357,34 @@
       min-width: min(100%, 340px);
     }
 
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+
+    .filter-panel {
+      background: #f7fafb;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 14px;
+      margin: 14px 0 16px;
+    }
+
+    .filter-panel .toolbar {
+      margin-bottom: 12px;
+    }
+
+    .filter-panel .search {
+      flex: 1 1 320px;
+    }
+
+    .filter-panel label {
+      color: #526173;
+      font-size: 12px;
+    }
+
     .label-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(10cm, 1fr));
@@ -830,6 +858,8 @@
     const STORAGE_KEY = "snBarcodeProducts.v2.empty";
     const MODEL_STORAGE_KEY = "snBarcodeModels.v2.empty";
     const WARRANTY_MONTHS = 12;
+    const INACTIVITY_LIMIT_MS = 2 * 60 * 60 * 1000;
+    let inactivityTimer = null;
 
     const state = {
       products: [],
@@ -893,6 +923,7 @@
         return;
       }
 
+      startAutoLogout();
       document.body.classList.remove("admin-locked");
       // First populate state from local storage before syncing
       state.products = loadProducts();
@@ -923,8 +954,10 @@
     }
 
     function renderAdminLogin() {
+      stopAutoLogout();
       document.body.classList.add("admin-locked");
       document.body.classList.remove("customer-public");
+      el.stats.hidden = true;
       document.querySelectorAll(".view").forEach((panel) => panel.hidden = true);
       const panel = document.getElementById("view-customer");
       panel.hidden = false;
@@ -936,7 +969,11 @@
           </div>
           <form class="panel-body" id="adminLoginForm">
             <div class="field">
-              <label for="adminPassword">รหัสแอดมิน</label>
+              <label for="adminUsername">ID พนักงาน</label>
+              <input id="adminUsername" name="username" autocomplete="username" value="adminpro" required />
+            </div>
+            <div class="field">
+              <label for="adminPassword">Password</label>
               <input id="adminPassword" name="password" type="password" autocomplete="current-password" required />
             </div>
             <div class="actions">
@@ -948,15 +985,16 @@
       `;
       document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
         event.preventDefault();
+        const username = event.currentTarget.elements.username.value.trim();
         const password = event.currentTarget.elements.password.value;
         try {
           const response = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password })
+            body: JSON.stringify({ username, password })
           });
           if (!response.ok) {
-            showToast("รหัสแอดมินไม่ถูกต้อง");
+            showToast("ID หรือ Password ไม่ถูกต้อง");
             return;
           }
           location.href = "/";
@@ -964,6 +1002,39 @@
           showToast("เข้าสู่ระบบไม่ได้ กรุณาตรวจสอบเซิร์ฟเวอร์");
         }
       });
+    }
+
+    function startAutoLogout() {
+      stopAutoLogout();
+      ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
+        window.addEventListener(eventName, resetAutoLogout, { passive: true });
+      });
+      resetAutoLogout();
+    }
+
+    function stopAutoLogout() {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = null;
+      ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
+        window.removeEventListener(eventName, resetAutoLogout);
+      });
+    }
+
+    function resetAutoLogout() {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(logoutForInactivity, INACTIVITY_LIMIT_MS);
+    }
+
+    async function logoutForInactivity() {
+      stopAutoLogout();
+      try {
+        await fetch("/api/logout", { method: "POST" });
+      } catch (error) {
+        console.warn(error);
+      }
+      state.authenticated = false;
+      showToast("ออกจากระบบอัตโนมัติ เนื่องจากไม่ได้ใช้งานเกิน 2 ชั่วโมง");
+      renderAdminLogin();
     }
 
     async function loadCustomerProduct(sn) {
@@ -1089,6 +1160,7 @@
       document.querySelectorAll(".nav-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.view === view);
       });
+      el.stats.hidden = !["dashboard", "data"].includes(view);
       el.pageTitle.textContent = titles[view][0];
       el.pageIntro.textContent = titles[view][1];
       if (push && view !== "customer") history.replaceState(null, "", location.pathname);
@@ -1682,7 +1754,32 @@
       `;
     }
 
+    function uniqueValues(items, getter) {
+      return [...new Set(items.map(getter).map((value) => String(value || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "th"));
+    }
+
+    function filterOptions(values) {
+      return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+    }
+
+    function warrantyFilterValue(product) {
+      return warrantyStatus(product).label;
+    }
+
+    function customerCompanyFilterValue(product) {
+      const customer = String(product.customerName || "").trim();
+      const company = String(product.companyName || "").trim();
+      if (customer && company) return `${customer} / ${company}`;
+      return customer || company;
+    }
+
     function renderData() {
+      const productOptions = filterOptions(uniqueValues(state.products, (p) => p.productName));
+      const customerCompanyOptions = filterOptions(uniqueValues(state.products, customerCompanyFilterValue));
+      const customerTypeOptions = filterOptions(uniqueValues(state.products, (p) => p.customerType));
+      const locationOptions = filterOptions(uniqueValues(state.products, (p) => p.installLocation));
+      const installDateOptions = filterOptions(uniqueValues(state.products, (p) => p.installDate));
       document.getElementById("view-data").innerHTML = `
         <div class="panel">
           <div class="panel-header">
@@ -1692,9 +1789,45 @@
             </div>
           </div>
           <div class="panel-body">
-            <div class="toolbar">
-              <input class="search" id="dataSearch" placeholder="ค้นหา SN, สินค้า, ลูกค้า, บริษัท, ประเภทลูกค้า หรือสถานที่ติดตั้ง" />
-              <span class="hint" id="dataCount"></span>
+            <div class="filter-panel">
+              <div class="toolbar">
+                <input class="search" id="dataSearch" placeholder="ค้นหา SN หรือข้อมูลในตาราง" />
+                <span class="hint" id="dataCount"></span>
+              </div>
+              <div class="filter-grid">
+              <div class="field">
+                <label for="filterProduct">รหัสสินค้า</label>
+                <select id="filterProduct"><option value="">ทั้งหมด</option>${productOptions}</select>
+              </div>
+              <div class="field">
+                <label for="filterStatus">สถานะ</label>
+                <select id="filterStatus">
+                  <option value="">ทั้งหมด</option>
+                  <option value="stock">ในสต็อก</option>
+                  <option value="installed">ติดตั้งแล้ว</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filterCustomerCompany">ลูกค้า / บริษัท</label>
+                <select id="filterCustomerCompany"><option value="">ทั้งหมด</option>${customerCompanyOptions}</select>
+              </div>
+              <div class="field">
+                <label for="filterCustomerType">ประเภทลูกค้า</label>
+                <select id="filterCustomerType"><option value="">ทั้งหมด</option>${customerTypeOptions}</select>
+              </div>
+              <div class="field">
+                <label for="filterLocation">สถานที่ติดตั้ง</label>
+                <select id="filterLocation"><option value="">ทั้งหมด</option>${locationOptions}</select>
+              </div>
+              <div class="field">
+                <label for="filterInstallDate">วันที่ติดตั้ง</label>
+                <select id="filterInstallDate"><option value="">ทั้งหมด</option>${installDateOptions}</select>
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button class="secondary" id="resetFiltersBtn" type="button">ล้างฟิลเตอร์</button>
+              </div>
+              </div>
             </div>
             <div class="table-wrap" id="dataTable"></div>
           </div>
@@ -1702,11 +1835,26 @@
       `;
 
       const search = document.getElementById("dataSearch");
+      const filters = {
+        status: document.getElementById("filterStatus"),
+        productName: document.getElementById("filterProduct"),
+        customerCompany: document.getElementById("filterCustomerCompany"),
+        customerType: document.getElementById("filterCustomerType"),
+        installLocation: document.getElementById("filterLocation"),
+        installDate: document.getElementById("filterInstallDate")
+      };
       const render = () => {
         const q = search.value.trim().toLowerCase();
         const filtered = state.products.filter((p) => {
-          const text = [p.sn, p.productName, p.customerName, p.companyName, p.customerType, p.installLocation, p.status].join(" ").toLowerCase();
-          return text.includes(q);
+          const text = [p.sn, p.productName, p.customerName, p.companyName, p.customerType, p.installLocation, p.status, p.installDate, p.warrantyEnd, warrantyFilterValue(p)].join(" ").toLowerCase();
+          if (q && !text.includes(q)) return false;
+          if (filters.status.value && p.status !== filters.status.value) return false;
+          if (filters.productName.value && p.productName !== filters.productName.value) return false;
+          if (filters.customerCompany.value && customerCompanyFilterValue(p) !== filters.customerCompany.value) return false;
+          if (filters.customerType.value && (p.customerType || "") !== filters.customerType.value) return false;
+          if (filters.installLocation.value && (p.installLocation || "") !== filters.installLocation.value) return false;
+          if (filters.installDate.value && (p.installDate || "") !== filters.installDate.value) return false;
+          return true;
         });
         document.getElementById("dataCount").textContent = `พบ ${filtered.length} รายการ`;
         document.getElementById("dataTable").innerHTML = productTable(filtered, true);
@@ -1714,6 +1862,14 @@
         document.querySelectorAll("[data-delete-sn]").forEach((btn) => btn.addEventListener("click", () => deleteProduct(btn.dataset.deleteSn)));
       };
       search.addEventListener("input", render);
+      Object.values(filters).forEach((input) => input.addEventListener("change", render));
+      document.getElementById("resetFiltersBtn").addEventListener("click", () => {
+        search.value = "";
+        Object.values(filters).forEach((input) => {
+          input.value = "";
+        });
+        render();
+      });
       document.getElementById("clearBtn").addEventListener("click", () => {
         if (!confirm("ต้องการล้างข้อมูลทั้งหมดใช่ไหม?")) return;
         state.products = [];
@@ -1733,7 +1889,7 @@
           <thead>
             <tr>
               <th>SN</th>
-              <th>สินค้า</th>
+              <th>รหัสสินค้า</th>
               <th>สถานะ</th>
               <th>ลูกค้า / บริษัท</th>
               <th>ประเภทลูกค้า</th>

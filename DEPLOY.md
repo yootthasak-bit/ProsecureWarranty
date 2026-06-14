@@ -19,11 +19,24 @@
 npm start
 ```
 
-ตั้งรหัสแอดมินจริงด้วย environment variable:
+ตั้ง ID และ Password พนักงานด้วย environment variable:
 
 ```text
+ADMIN_USER=adminpro
 ADMIN_PASSWORD=รหัสที่ต้องการ
 ```
+
+ถ้าต้องการให้ระบบส่งอีเมลแจ้งเตือนเมื่อมีการแก้ไขข้อมูล ให้ตั้งค่า SMTP เพิ่ม:
+
+```text
+SMTP_HOST=smtp.yourmail.com
+SMTP_PORT=587
+SMTP_USER=your@email.com
+SMTP_PASS=your_email_password
+SMTP_FROM=your@email.com
+```
+
+ระบบจะส่งแจ้งเตือนไปที่ `Yootthasak.ra@prosecure.co.th`
 
 เมื่อได้โดเมนจริง เช่น
 
