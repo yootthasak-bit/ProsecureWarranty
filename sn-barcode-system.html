@@ -970,7 +970,7 @@
           <form class="panel-body" id="adminLoginForm">
             <div class="field">
               <label for="adminUsername">ID พนักงาน</label>
-              <input id="adminUsername" name="username" autocomplete="username" value="adminpro" required />
+              <input id="adminUsername" name="username" autocomplete="username" required />
             </div>
             <div class="field">
               <label for="adminPassword">Password</label>
@@ -1857,7 +1857,11 @@
           return true;
         });
         document.getElementById("dataCount").textContent = `พบ ${filtered.length} รายการ`;
-        document.getElementById("dataTable").innerHTML = productTable(filtered, true);
+        const sorted = [...filtered].sort((a, b) => {
+          if (a.status === b.status) return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+          return a.status === "installed" ? -1 : 1;
+        });
+        document.getElementById("dataTable").innerHTML = productTable(sorted, true);
         document.querySelectorAll("[data-edit-sn]").forEach((btn) => btn.addEventListener("click", () => editProduct(btn.dataset.editSn)));
         document.querySelectorAll("[data-delete-sn]").forEach((btn) => btn.addEventListener("click", () => deleteProduct(btn.dataset.deleteSn)));
       };
