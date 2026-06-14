@@ -623,6 +623,22 @@
       box-shadow: 0 22px 65px rgba(27, 43, 56, 0.14);
     }
 
+    body.admin-locked .app-shell {
+      grid-template-columns: 1fr;
+    }
+
+    body.admin-locked aside,
+    body.admin-locked .topbar,
+    body.admin-locked .stats {
+      display: none !important;
+    }
+
+    body.admin-locked main {
+      min-height: 100vh;
+      place-items: center;
+      padding: 28px;
+    }
+
     .info-box span {
       color: var(--muted);
       display: block;
@@ -821,6 +837,8 @@
       activeView: "dashboard",
       lastGenerated: [],
       selectedLabels: new Set(),
+      authenticated: false,
+      customerLookup: null,
       lastUpdated: Number(localStorage.getItem("snBarcodeLastUpdated")) || 0
     };
 
@@ -851,19 +869,35 @@
     window.addEventListener("popstate", () => {
       const params = new URLSearchParams(location.search);
       const sn = params.get("sn");
-      if (sn || params.get("customer") === "1") setView("customer");
+      if (!isAdminPath() || sn || params.get("customer") === "1") setView("customer");
     });
 
     init();
 
     async function init() {
+      const params = new URLSearchParams(location.search);
+      if (!isAdminPath()) {
+        state.activeView = "customer";
+        document.body.classList.add("customer-public");
+        await loadCustomerProduct(params.get("sn") || "");
+        renderAll();
+        setView("customer", false);
+        return;
+      }
+
+      state.authenticated = await checkAdminSession();
+      if (!state.authenticated) {
+        renderAdminLogin();
+        return;
+      }
+
+      document.body.classList.remove("admin-locked");
       // First populate state from local storage before syncing
       state.products = loadProducts();
       state.models = loadModels();
       
       await syncFromServer();
       
-      const params = new URLSearchParams(location.search);
       if (params.get("sn") || params.get("customer") === "1") {
         state.activeView = "customer";
         document.body.classList.add("customer-public");
@@ -872,6 +906,79 @@
       }
       renderAll();
       setView(state.activeView, false);
+    }
+
+    function isAdminPath() {
+      return location.pathname.replace(/\/+$/, "") === "/admin";
+    }
+
+    async function checkAdminSession() {
+      if (!serverMode()) return false;
+      try {
+        const response = await fetch("/api/session", { cache: "no-store" });
+        const data = await response.json();
+        return Boolean(data.authenticated);
+      } catch {
+        return false;
+      }
+    }
+
+    function renderAdminLogin() {
+      document.body.classList.add("admin-locked");
+      document.body.classList.remove("customer-public");
+      document.querySelectorAll(".view").forEach((panel) => panel.hidden = true);
+      const panel = document.getElementById("view-customer");
+      panel.hidden = false;
+      panel.innerHTML = `
+        <div class="panel customer-card">
+          <div class="hero">
+            <h2>เข้าสู่ระบบพนักงาน</h2>
+            <p>ใส่รหัสแอดมินเพื่อจัดการ SN, สินค้า, การติดตั้ง และการพิมพ์ Barcode</p>
+          </div>
+          <form class="panel-body" id="adminLoginForm">
+            <div class="field">
+              <label for="adminPassword">รหัสแอดมิน</label>
+              <input id="adminPassword" name="password" type="password" autocomplete="current-password" required />
+            </div>
+            <div class="actions">
+              <button type="submit">เข้าสู่ระบบ</button>
+              <a class="secondary" href="/">ไปหน้าลูกค้า</a>
+            </div>
+            <span class="hint">รหัสเริ่มต้นคือ 1234 และควรเปลี่ยนเป็นรหัสจริงก่อนใช้งานออนไลน์</span>
+          </form>
+        </div>
+      `;
+      document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const password = event.currentTarget.elements.password.value;
+        try {
+          const response = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password })
+          });
+          if (!response.ok) {
+            showToast("รหัสแอดมินไม่ถูกต้อง");
+            return;
+          }
+          location.href = "/admin";
+        } catch {
+          showToast("เข้าสู่ระบบไม่ได้ กรุณาตรวจสอบเซิร์ฟเวอร์");
+        }
+      });
+    }
+
+    async function loadCustomerProduct(sn) {
+      state.customerLookup = null;
+      if (!sn || !serverMode()) return;
+      try {
+        const response = await fetch(`/api/customer?sn=${encodeURIComponent(sn)}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Cannot load customer data");
+        const data = await response.json();
+        state.customerLookup = data.product || null;
+      } catch (error) {
+        console.warn(error);
+      }
     }
 
     function serverMode() {
@@ -974,6 +1081,10 @@
     }
 
     function setView(view, push = true) {
+      if (!state.authenticated && view !== "customer") {
+        renderAdminLogin();
+        return;
+      }
       state.activeView = view;
       document.querySelectorAll(".view").forEach((panel) => panel.hidden = true);
       document.getElementById(`view-${view}`).hidden = false;
@@ -1454,7 +1565,7 @@
     }
 
     function labelCard(product) {
-      const url = customerPortalUrl();
+      const url = customerUrl(product.sn);
       const spec = productSpec(product);
       const selected = state.selectedLabels.has(product.sn);
       return `
@@ -1513,7 +1624,8 @@
     function renderCustomer() {
       const params = new URLSearchParams(location.search);
       const currentSn = params.get("sn") || "";
-      const product = state.products.find((p) => p.sn === currentSn);
+      const publicMode = !isAdminPath() || document.body.classList.contains("customer-public");
+      const product = publicMode ? state.customerLookup : state.products.find((p) => p.sn === currentSn);
       document.getElementById("view-customer").innerHTML = `
         <div class="panel customer-card">
           <div class="hero">
@@ -1531,15 +1643,15 @@
       `;
       const form = document.getElementById("customerSearchForm");
       if (form) {
-        form.addEventListener("submit", (event) => {
+        form.addEventListener("submit", async (event) => {
           event.preventDefault();
           const sn = document.getElementById("customerSn").value.trim();
           if (!sn) return;
-          const publicMode = document.body.classList.contains("customer-public");
           const nextUrl = publicMode
             ? `${location.pathname}?customer=1&sn=${encodeURIComponent(sn)}`
             : `${location.pathname}?sn=${encodeURIComponent(sn)}`;
           history.replaceState(null, "", nextUrl);
+          if (publicMode) await loadCustomerProduct(sn);
           renderCustomer();
         });
       }
@@ -1763,13 +1875,13 @@
     }
 
     function customerUrl(sn) {
-      const base = location.href.split("?")[0].split("#")[0];
-      return `${base}?sn=${encodeURIComponent(sn)}`;
+      const url = new URL("/", location.origin);
+      url.searchParams.set("sn", sn);
+      return url.toString();
     }
 
     function customerPortalUrl() {
-      const base = location.href.split("?")[0].split("#")[0];
-      return `${base}?customer=1`;
+      return new URL("/", location.origin).toString();
     }
 
     function qrImageUrl(text) {

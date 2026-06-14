@@ -1,5 +1,53 @@
 {
-  "products": [],
+  "products": [
+    {
+      "sn": "BH9686M2026061001",
+      "year": "2026",
+      "month": "06",
+      "lot": "1",
+      "sequence": 1,
+      "serialCore": "2026061001",
+      "productPrefix": "BH9686M",
+      "modelId": "model-1780065639574",
+      "productName": "BH9686M",
+      "material": "Acrylic",
+      "size": "1550*390*40",
+      "voltage": "220V 50Hz",
+      "status": "installed",
+      "customerName": "Tops",
+      "companyName": "Mastsumoto",
+      "installLocation": "รามอินทรา",
+      "installDate": "2026-06-14",
+      "warrantyStart": "2026-06-14",
+      "warrantyEnd": "2027-06-13",
+      "note": "",
+      "createdAt": "2026-06-14T04:56:09.704Z",
+      "customerType": "Multi branch"
+    },
+    {
+      "sn": "BH9686M2026061002",
+      "year": "2026",
+      "month": "06",
+      "lot": "1",
+      "sequence": 2,
+      "serialCore": "2026061002",
+      "productPrefix": "BH9686M",
+      "modelId": "model-1780065639574",
+      "productName": "BH9686M",
+      "material": "Acrylic",
+      "size": "1550*390*40",
+      "voltage": "220V 50Hz",
+      "status": "stock",
+      "customerName": "",
+      "companyName": "",
+      "installLocation": "",
+      "installDate": "",
+      "warrantyStart": "",
+      "warrantyEnd": "",
+      "note": "",
+      "createdAt": "2026-06-14T04:56:09.704Z"
+    }
+  ],
   "models": [
     {
       "id": "model-1780065639574",
@@ -9,5 +57,6 @@
       "voltage": "220V 50Hz",
       "createdAt": "2026-05-29T14:40:39.574Z"
     }
-  ]
+  ],
+  "lastUpdated": 1781412992673
 }
